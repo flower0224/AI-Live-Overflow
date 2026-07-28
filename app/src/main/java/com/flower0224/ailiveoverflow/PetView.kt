@@ -4,112 +4,127 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RadialGradient
-import android.graphics.Shader
 import android.os.Handler
 import android.os.Looper
 import android.view.View
 
 class PetView(context: Context) : View(context) {
 
-    private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val eyePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val pupilPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val blushPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val mouthPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-    private var blinkAlpha = 255
+    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
+    }
     private val handler = Handler(Looper.getMainLooper())
     private var isBlinking = false
 
+    // pixel robot colors
+    private val bodyColor = Color.rgb(180, 210, 230)       // soft blue-gray
+    private val darkColor = Color.rgb(100, 130, 160)       // shadow / outline
+    private val accentColor = Color.rgb(255, 200, 120)     // warm orange accent
+    private val eyeColor = Color.rgb(50, 50, 60)           // dark eyes
+    private val blushColor = Color.argb(100, 255, 160, 150)
+
+    private var gridSize = 8f
+
     init {
-        blushPaint.color = Color.argb(80, 255, 160, 160)
-        mouthPaint.color = Color.argb(200, 120, 80, 80)
-        mouthPaint.style = Paint.Style.STROKE
-        mouthPaint.strokeWidth = 3f
         startBlinkTimer()
-    }
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        val cx = w / 2f
-        val cy = h / 2f
-        val radius = w.coerceAtMost(h) / 2f
-
-        bodyPaint.shader = RadialGradient(
-            cx, cy - radius * 0.15f, radius,
-            intArrayOf(
-                Color.rgb(255, 250, 245),
-                Color.rgb(240, 220, 210)
-            ),
-            null,
-            Shader.TileMode.CLAMP
-        )
     }
 
     private fun startBlinkTimer() {
         handler.postDelayed({
             blink()
             startBlinkTimer()
-        }, 3000L + (Math.random() * 2000).toLong())
+        }, 3500L + (Math.random() * 2000).toLong())
     }
 
     private fun blink() {
         isBlinking = true
-        handler.postDelayed({ isBlinking = false; invalidate() }, 150)
+        handler.postDelayed({ isBlinking = false; invalidate() }, 120)
         invalidate()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        gridSize = w.coerceAtMost(h) / 18f
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
         val cx = width / 2f
-        val cy = height / 2f
-        val r = width.coerceAtMost(height) / 2f - 10f
+        val top = height / 2f - gridSize * 7f
+        val g = gridSize
 
-        // body
-        canvas.drawCircle(cx, cy, r, bodyPaint)
+        // --- antenna ---
+        fillPaint.color = darkColor
+        canvas.drawRect(cx - g * 0.3f, top - g * 2.5f, cx + g * 0.3f, top - g * 0.3f, fillPaint)
+        fillPaint.color = accentColor
+        canvas.drawRect(cx - g * 0.8f, top - g * 3f, cx + g * 0.8f, top - g * 2.5f, fillPaint)
 
-        // blush
-        canvas.drawCircle(cx - r * 0.4f, cy + r * 0.15f, r * 0.15f, blushPaint)
-        canvas.drawCircle(cx + r * 0.4f, cy + r * 0.15f, r * 0.18f, blushPaint)
+        // --- head ---
+        drawPixelRect(canvas, cx - g * 4f, top, cx + g * 4f, top + g * 6f, bodyColor)
 
-        // eyes
-        val eyeY = cy - r * 0.1f
-        drawEye(canvas, cx - r * 0.3f, eyeY, r * 0.18f)
-        drawEye(canvas, cx + r * 0.3f, eyeY, r * 0.18f)
+        // --- face plate ---
+        drawPixelRect(canvas, cx - g * 3f, top + g * 0.8f, cx + g * 3f, top + g * 5.2f, Color.rgb(220, 235, 245))
 
-        // mouth
-        canvas.drawArc(
-            cx - r * 0.2f, cy + r * 0.05f,
-            cx + r * 0.2f, cy + r * 0.35f,
-            0f, -180f, false, mouthPaint
-        )
+        // --- eyes ---
+        val eyeY = top + g * 2.2f
+        fillPaint.color = eyeColor
+        if (isBlinking) {
+            // blink: horizontal lines
+            canvas.drawRect(cx - g * 1.8f, eyeY + g * 0.6f, cx - g * 0.3f, eyeY + g * 1f, fillPaint)
+            canvas.drawRect(cx + g * 0.3f, eyeY + g * 0.6f, cx + g * 1.8f, eyeY + g * 1f, fillPaint)
+        } else {
+            canvas.drawRect(cx - g * 1.8f, eyeY, cx - g * 0.3f, eyeY + g * 1.5f, fillPaint)
+            canvas.drawRect(cx + g * 0.3f, eyeY, cx + g * 1.8f, eyeY + g * 1.5f, fillPaint)
+            // eye highlights
+            fillPaint.color = Color.WHITE
+            canvas.drawRect(cx - g * 1.2f, eyeY + g * 0.1f, cx - g * 0.6f, eyeY + g * 0.5f, fillPaint)
+            canvas.drawRect(cx + g * 0.9f, eyeY + g * 0.1f, cx + g * 1.5f, eyeY + g * 0.5f, fillPaint)
+        }
+
+        // --- blush ---
+        fillPaint.color = blushColor
+        canvas.drawRect(cx - g * 3.2f, top + g * 3.5f, cx - g * 1.8f, top + g * 4.2f, fillPaint)
+        canvas.drawRect(cx + g * 1.8f, top + g * 3.5f, cx + g * 3.2f, top + g * 4.2f, fillPaint)
+
+        // --- mouth ---
+        fillPaint.color = darkColor
+        canvas.drawRect(cx - g * 0.6f, top + g * 4f, cx + g * 0.6f, top + g * 4.4f, fillPaint)
+
+        // --- neck ---
+        fillPaint.color = darkColor
+        canvas.drawRect(cx - g * 1f, top + g * 6f, cx + g * 1f, top + g * 7f, fillPaint)
+
+        // --- body ---
+        drawPixelRect(canvas, cx - g * 3.5f, top + g * 7f, cx + g * 3.5f, top + g * 11f, bodyColor)
+
+        // --- chest indicator ---
+        fillPaint.color = accentColor
+        canvas.drawRect(cx - g * 0.6f, top + g * 8.2f, cx + g * 0.6f, top + g * 9f, fillPaint)
+
+        // --- arms ---
+        drawPixelRect(canvas, cx - g * 5f, top + g * 7.5f, cx - g * 3.5f, top + g * 10f, bodyColor)
+        drawPixelRect(canvas, cx + g * 3.5f, top + g * 7.5f, cx + g * 5f, top + g * 10f, bodyColor)
+
+        // --- hands ---
+        fillPaint.color = accentColor
+        canvas.drawRect(cx - g * 5.5f, top + g * 9f, cx - g * 5f, top + g * 10f, fillPaint)
+        canvas.drawRect(cx + g * 5f, top + g * 9f, cx + g * 5.5f, top + g * 10f, fillPaint)
+
+        // --- feet ---
+        fillPaint.color = darkColor
+        canvas.drawRect(cx - g * 2.5f, top + g * 11f, cx - g * 0.5f, top + g * 12f, fillPaint)
+        canvas.drawRect(cx + g * 0.5f, top + g * 11f, cx + g * 2.5f, top + g * 12f, fillPaint)
     }
 
-    private fun drawEye(canvas: Canvas, x: Float, y: Float, radius: Float) {
-        if (isBlinking) {
-            // closed eye
-            eyePaint.color = Color.rgb(100, 70, 60)
-            eyePaint.style = Paint.Style.STROKE
-            eyePaint.strokeWidth = 3f
-            canvas.drawLine(x - radius, y, x + radius, y, eyePaint)
-            eyePaint.style = Paint.Style.FILL
-        } else {
-            // eye white
-            eyePaint.color = Color.WHITE
-            eyePaint.style = Paint.Style.FILL
-            canvas.drawCircle(x, y, radius, eyePaint)
-
-            // pupil
-            pupilPaint.color = Color.rgb(60, 40, 30)
-            canvas.drawCircle(x, y, radius * 0.6f, pupilPaint)
-
-            // highlight
-            highlightPaint.color = Color.WHITE
-            canvas.drawCircle(x - radius * 0.25f, y - radius * 0.3f, radius * 0.25f, highlightPaint)
-        }
+    private fun drawPixelRect(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, color: Int) {
+        fillPaint.color = color
+        canvas.drawRect(left, top, right, bottom, fillPaint)
+        // subtle outline
+        strokePaint.color = darkColor
+        canvas.drawRect(left, top, right, bottom, strokePaint)
     }
 
     override fun onDetachedFromWindow() {
