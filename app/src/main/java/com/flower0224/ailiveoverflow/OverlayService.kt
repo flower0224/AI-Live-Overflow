@@ -49,7 +49,8 @@ class OverlayService : Service() {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -62,9 +63,6 @@ class OverlayService : Service() {
         petView.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    layoutParams.flags =
-                        layoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-                    windowManager.updateViewLayout(petView, layoutParams)
                     petView.lastTouchX = event.rawX
                     petView.lastTouchY = event.rawY
                     true
@@ -80,9 +78,6 @@ class OverlayService : Service() {
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    layoutParams.flags =
-                        layoutParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                    windowManager.updateViewLayout(petView, layoutParams)
                     true
                 }
                 else -> false
