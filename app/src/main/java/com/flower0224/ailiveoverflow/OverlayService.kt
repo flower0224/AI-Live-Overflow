@@ -9,6 +9,8 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
 
 class OverlayService : Service() {
@@ -42,7 +44,7 @@ class OverlayService : Service() {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -52,10 +54,37 @@ class OverlayService : Service() {
 
         windowManager.addView(petView, layoutParams)
 
-        petView.onDragListener = { dx, dy ->
-            layoutParams.x += dx.toInt()
-            layoutParams.y += dy.toInt()
-            windowManager.updateViewLayout(petView, layoutParams)
+        // 只在天线区域响应拖动
+        petView.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (event.y < 30f) {
+                        layoutParams.flags =
+                            layoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                        windowManager.updateViewLayout(petView, layoutParams)
+                        petView.lastTouchX = event.rawX
+                        petView.lastTouchY = event.rawY
+                        true
+                    } else false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.rawX - petView.lastTouchX
+                    val dy = event.rawY - petView.lastTouchY
+                    petView.lastTouchX = event.rawX
+                    petView.lastTouchY = event.rawY
+                    layoutParams.x += dx.toInt()
+                    layoutParams.y += dy.toInt()
+                    windowManager.updateViewLayout(petView, layoutParams)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    layoutParams.flags =
+                        layoutParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                    windowManager.updateViewLayout(petView, layoutParams)
+                    true
+                }
+                else -> false
+            }
         }
     }
 
