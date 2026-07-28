@@ -10,12 +10,11 @@ import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.WindowManager
-import android.widget.ImageView
 
 class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
-    private lateinit var petView: ImageView
+    private lateinit var petView: PetView
     private lateinit var supabaseSync: SupabaseSync
 
     override fun onCreate() {
@@ -29,13 +28,11 @@ class OverlayService : Service() {
     }
 
     private fun createOverlayView() {
-        petView = ImageView(this).apply {
-            setBackgroundColor(0x80FFCCCC.toInt())
-        }
+        petView = PetView(this)
 
         val params = WindowManager.LayoutParams(
-            200,
-            200,
+            220,
+            240,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
@@ -44,6 +41,8 @@ class OverlayService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
+            x = 60
+            y = 120
         }
 
         windowManager.addView(petView, params)
