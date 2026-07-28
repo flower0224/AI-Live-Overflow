@@ -25,6 +25,10 @@ class OverlayService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         supabaseSync = SupabaseSync()
         createOverlayView()
+
+        supabaseSync.onStateChanged = { mood ->
+            petView.mood = mood
+        }
     }
 
     private fun createOverlayView() {
