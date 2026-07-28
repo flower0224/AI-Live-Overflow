@@ -1,5 +1,6 @@
 package com.flower0224.ailiveoverflow
 
+import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import kotlinx.coroutines.*
@@ -30,12 +31,16 @@ class AppWatcher(
         return try {
             val m = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
             val now = System.currentTimeMillis()
-            val stats = m.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                now - 10_000,
-                now
-            )
-            stats.maxByOrNull { it.lastTimeUsed }?.packageName
+            val events = m.queryEvents(now - 5_000, now)
+            val event = UsageEvents.Event()
+            var foregroundPkg: String? = null
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                    foregroundPkg = event.packageName
+                }
+            }
+            foregroundPkg
         } catch (_: Exception) {
             null
         }
