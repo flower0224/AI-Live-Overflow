@@ -20,6 +20,18 @@ class OverlayService : Service() {
     private lateinit var appWatcher: AppWatcher
     private lateinit var layoutParams: WindowManager.LayoutParams
 
+    private val aiApps = setOf(
+        "com.alibaba.tongyi",
+        "com.baidu.wenxin",
+        "com.openai.chatgpt",
+        "com.google.android.apps.bard",
+        "com.doubao.app",
+        "com.moonshot.kimichat",
+        "com.stepai.step",
+        "com.zhipu.glm",
+        "com.anthropic.claude"
+    )
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -34,6 +46,8 @@ class OverlayService : Service() {
         }
 
         appWatcher = AppWatcher(this) { pkg ->
+            val mood = if (pkg in aiApps) "jealous" else "idle"
+            petView.mood = mood
             supabaseSync.reportEvent("app_foreground", pkg)
         }
         appWatcher.start()
