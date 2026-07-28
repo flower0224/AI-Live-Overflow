@@ -22,7 +22,7 @@ class AppWatcher(
                         onAppChanged(pkg)
                     }
                 }
-                delay(3_000L)
+                delay(2_000L)
             }
         }
     }
@@ -31,13 +31,17 @@ class AppWatcher(
         return try {
             val m = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
             val now = System.currentTimeMillis()
-            val events = m.queryEvents(now - 5_000, now)
+            val events = m.queryEvents(now - 30_000, now)
             val event = UsageEvents.Event()
             var foregroundPkg: String? = null
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
-                if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                    foregroundPkg = event.packageName
+                if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND ||
+                    event.eventType == UsageEvents.Event.ACTIVITY_RESUMED
+                ) {
+                    if (!event.packageName.isNullOrEmpty()) {
+                        foregroundPkg = event.packageName
+                    }
                 }
             }
             foregroundPkg
