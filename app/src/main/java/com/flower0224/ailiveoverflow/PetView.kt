@@ -5,7 +5,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
-import android.view.MotionEvent
 import android.view.View
 
 class PetView(context: Context) : View(context) {
@@ -25,14 +24,14 @@ class PetView(context: Context) : View(context) {
             postInvalidate()
         }
 
-    var onDragListener: ((Float, Float) -> Unit)? = null
-    private var lastTouchX = 0f
-    private var lastTouchY = 0f
+    // 供 OverlayService 拖动使用
+    var lastTouchX = 0f
+    var lastTouchY = 0f
 
     // TV colors
     private val tvBodyColor = Color.rgb(24, 24, 24)
     private val tvFrameColor = Color.rgb(55, 55, 60)
-    private val screenBgColor = Color.rgb(0, 47, 167)   // Klein Blue #002FA7
+    private val screenBgColor = Color.rgb(0, 47, 167)
     private val textColor = Color.rgb(230, 240, 255)
 
     private val moodEmojis = mapOf(
@@ -52,25 +51,6 @@ class PetView(context: Context) : View(context) {
         "sad" to Color.rgb(140, 160, 220),
         "angry" to Color.rgb(255, 90, 90)
     )
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                lastTouchX = event.rawX
-                lastTouchY = event.rawY
-                return true
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val dx = event.rawX - lastTouchX
-                val dy = event.rawY - lastTouchY
-                lastTouchX = event.rawX
-                lastTouchY = event.rawY
-                onDragListener?.invoke(dx, dy)
-                return true
-            }
-        }
-        return super.onTouchEvent(event)
-    }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -111,7 +91,7 @@ class PetView(context: Context) : View(context) {
         fillPaint.color = screenBgColor
         canvas.drawRoundRect(screenRect, 5f, 5f, fillPaint)
 
-        // 扫描线效果
+        // 扫描线
         val scanlineAlpha = 20
         fillPaint.color = Color.argb(scanlineAlpha, 0, 0, 0)
         var sy = screenTop + 3f
