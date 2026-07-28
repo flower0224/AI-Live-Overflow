@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.MotionEvent
-import android.view.View
 import android.view.WindowManager
 
 class OverlayService : Service() {
@@ -18,6 +17,7 @@ class OverlayService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var petView: PetView
     private lateinit var supabaseSync: SupabaseSync
+    private lateinit var appWatcher: AppWatcher
     private lateinit var layoutParams: WindowManager.LayoutParams
 
     override fun onCreate() {
@@ -32,6 +32,11 @@ class OverlayService : Service() {
         supabaseSync.onStateChanged = { mood ->
             petView.mood = mood
         }
+
+        appWatcher = AppWatcher(this) { pkg ->
+            supabaseSync.reportEvent("app_foreground", pkg)
+        }
+        appWatcher.start()
     }
 
     private fun createOverlayView() {
@@ -54,7 +59,6 @@ class OverlayService : Service() {
 
         windowManager.addView(petView, layoutParams)
 
-        // 只在天线区域响应拖动
         petView.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -122,6 +126,7 @@ class OverlayService : Service() {
     }
 
     override fun onDestroy() {
+        appWatcher.stop()
         supabaseSync.stopPolling()
         windowManager.removeView(petView)
         super.onDestroy()
