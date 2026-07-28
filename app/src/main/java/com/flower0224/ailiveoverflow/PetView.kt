@@ -4,8 +4,8 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.os.Handler
-import android.os.Looper
+import android.graphics.RectF
+import android.view.MotionEvent
 import android.view.View
 
 class PetView(context: Context) : View(context) {
@@ -13,180 +13,133 @@ class PetView(context: Context) : View(context) {
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = 2f
+        strokeWidth = 2.5f
     }
-    private val handler = Handler(Looper.getMainLooper())
-    private var isBlinking = false
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+    }
+
     var mood = "idle"
         set(value) {
             field = value
             postInvalidate()
         }
 
-    // pixel robot colors
-    private val bodyColor = Color.rgb(180, 210, 230)
-    private val darkColor = Color.rgb(100, 130, 160)
-    private val accentColor = Color.rgb(255, 200, 120)
-    private val eyeColor = Color.rgb(50, 50, 60)
-    private val blushColor = Color.argb(100, 255, 160, 150)
+    var onDragListener: ((Float, Float) -> Unit)? = null
+    private var lastTouchX = 0f
+    private var lastTouchY = 0f
 
-    private var gridSize = 8f
+    // TV colors
+    private val tvBodyColor = Color.rgb(24, 24, 24)
+    private val tvFrameColor = Color.rgb(55, 55, 60)
+    private val screenBgColor = Color.rgb(0, 47, 167)   // Klein Blue #002FA7
+    private val textColor = Color.rgb(230, 240, 255)
 
-    init {
-        startBlinkTimer()
-    }
+    private val moodEmojis = mapOf(
+        "idle" to "ᗜ𖥦ᗜ",
+        "happy" to "⋉(● ∸ ●)⋊",
+        "jealous" to "^ ^",
+        "surprised" to "O_o",
+        "sad" to "╯﹏╰",
+        "angry" to "（▼へ▼メ）"
+    )
 
-    private fun startBlinkTimer() {
-        handler.postDelayed({
-            blink()
-            startBlinkTimer()
-        }, 3500L + (Math.random() * 2000).toLong())
-    }
+    private val indicatorColors = mapOf(
+        "idle" to Color.rgb(255, 200, 100),
+        "happy" to Color.rgb(120, 255, 160),
+        "jealous" to Color.rgb(255, 140, 140),
+        "surprised" to Color.rgb(255, 220, 80),
+        "sad" to Color.rgb(140, 160, 220),
+        "angry" to Color.rgb(255, 90, 90)
+    )
 
-    private fun blink() {
-        isBlinking = true
-        handler.postDelayed({ isBlinking = false; invalidate() }, 120)
-        invalidate()
-    }
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        gridSize = w.coerceAtMost(h) / 18f
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                lastTouchX = event.rawX
+                lastTouchY = event.rawY
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dx = event.rawX - lastTouchX
+                val dy = event.rawY - lastTouchY
+                lastTouchX = event.rawX
+                lastTouchY = event.rawY
+                onDragListener?.invoke(dx, dy)
+                return true
+            }
+        }
+        return super.onTouchEvent(event)
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val cx = width / 2f
-        val top = height / 2f - gridSize * 7f
-        val g = gridSize
+        val w = width.toFloat()
+        val h = height.toFloat()
+        val cx = w / 2f
 
-        // --- antenna ---
-        fillPaint.color = darkColor
-        canvas.drawRect(cx - g * 0.3f, top - g * 2.5f, cx + g * 0.3f, top - g * 0.3f, fillPaint)
-        fillPaint.color = accentColor
-        canvas.drawRect(cx - g * 0.8f, top - g * 3f, cx + g * 0.8f, top - g * 2.5f, fillPaint)
+        // --- 天线 ---
+        fillPaint.color = tvBodyColor
+        canvas.drawRect(cx - 7f, 2f, cx - 2f, 20f, fillPaint)
+        canvas.drawRect(cx + 2f, 2f, cx + 7f, 20f, fillPaint)
+        fillPaint.color = Color.rgb(70, 70, 75)
+        canvas.drawCircle(cx - 4.5f, 2f, 4.5f, fillPaint)
+        canvas.drawCircle(cx + 4.5f, 2f, 4.5f, fillPaint)
 
-        // --- head ---
-        drawPixelRect(canvas, cx - g * 4f, top, cx + g * 4f, top + g * 6f, bodyColor)
+        // --- 电视机身 ---
+        val bodyTop = 18f
+        val bodyBottom = h - 14f
+        val bodyLeft = 4f
+        val bodyRight = w - 4f
+        val bodyRect = RectF(bodyLeft, bodyTop, bodyRight, bodyBottom)
 
-        // --- face plate ---
-        drawPixelRect(canvas, cx - g * 3f, top + g * 0.8f, cx + g * 3f, top + g * 5.2f, Color.rgb(220, 235, 245))
+        fillPaint.color = tvBodyColor
+        canvas.drawRoundRect(bodyRect, 12f, 12f, fillPaint)
 
-        // --- eyes ---
-        val eyeY = top + g * 2.2f
-        fillPaint.color = eyeColor
+        strokePaint.color = tvFrameColor
+        canvas.drawRoundRect(bodyRect, 12f, 12f, strokePaint)
 
-        when (mood) {
-            "happy" -> drawHappyEyes(canvas, cx, eyeY, g)
-            "sleepy" -> drawSleepyEyes(canvas, cx, eyeY, g)
-            else -> drawNormalEyes(canvas, cx, eyeY, g)
+        // --- 屏幕 ---
+        val sm = 10f
+        val screenLeft = bodyLeft + sm
+        val screenTop = bodyTop + sm
+        val screenRight = bodyRight - sm
+        val screenBottom = bodyBottom - sm - 8f
+        val screenRect = RectF(screenLeft, screenTop, screenRight, screenBottom)
+
+        fillPaint.color = screenBgColor
+        canvas.drawRoundRect(screenRect, 5f, 5f, fillPaint)
+
+        // 扫描线效果
+        val scanlineAlpha = 20
+        fillPaint.color = Color.argb(scanlineAlpha, 0, 0, 0)
+        var sy = screenTop + 3f
+        while (sy < screenBottom) {
+            canvas.drawRect(screenLeft + 2f, sy, screenRight - 2f, sy + 1.5f, fillPaint)
+            sy += 5f
         }
 
-        // --- blush ---
-        if (mood != "sleepy") {
-            fillPaint.color = blushColor
-            canvas.drawRect(cx - g * 3.2f, eyeY + g * 1.3f, cx - g * 1.8f, eyeY + g * 2f, fillPaint)
-            canvas.drawRect(cx + g * 1.8f, eyeY + g * 1.3f, cx + g * 3.2f, eyeY + g * 2f, fillPaint)
-        }
+        // --- 颜文字 ---
+        val emoji = moodEmojis[mood] ?: moodEmojis["idle"]!!
+        textPaint.color = textColor
+        val sw = screenRight - screenLeft
+        val sh = screenBottom - screenTop
+        val emojiWidth = textPaint.measureText(emoji)
+        textPaint.textSize = textPaint.textSize * (sw * 0.78f / emojiWidth.coerceAtLeast(1f))
+        val ty = screenTop + sh / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+        canvas.drawText(emoji, cx, ty, textPaint)
 
-        // --- mouth ---
-        fillPaint.color = darkColor
-        when (mood) {
-            "happy" -> {
-                canvas.drawRect(cx - g * 0.8f, eyeY + g * 2.2f, cx + g * 0.8f, eyeY + g * 2.6f, fillPaint)
-                canvas.drawRect(cx - g * 1.2f, eyeY + g * 2.6f, cx + g * 1.2f, eyeY + g * 3f, fillPaint)
-            }
-            "sleepy" -> {
-                canvas.drawRect(cx - g * 0.4f, eyeY + g * 2.5f, cx + g * 0.4f, eyeY + g * 2.8f, fillPaint)
-            }
-            else -> {
-                canvas.drawRect(cx - g * 0.6f, eyeY + g * 2.2f, cx + g * 0.6f, eyeY + g * 2.5f, fillPaint)
-            }
-        }
-
-        // --- neck ---
-        fillPaint.color = darkColor
-        canvas.drawRect(cx - g * 1f, top + g * 6f, cx + g * 1f, top + g * 7f, fillPaint)
-
-        // --- body ---
-        drawPixelRect(canvas, cx - g * 3.5f, top + g * 7f, cx + g * 3.5f, top + g * 11f, bodyColor)
-
-        // --- chest indicator ---
-        val indicatorColor = when (mood) {
-            "happy" -> Color.rgb(120, 255, 160)
-            "sleepy" -> Color.rgb(180, 180, 220)
-            else -> accentColor
-        }
+        // --- 底部指示灯 ---
+        val indicatorColor = indicatorColors[mood] ?: indicatorColors["idle"]!!
         fillPaint.color = indicatorColor
-        canvas.drawRect(cx - g * 0.6f, top + g * 8.2f, cx + g * 0.6f, top + g * 9f, fillPaint)
+        canvas.drawCircle(cx, bodyBottom + 2f, 3.5f, fillPaint)
 
-        // --- arms ---
-        drawPixelRect(canvas, cx - g * 5f, top + g * 7.5f, cx - g * 3.5f, top + g * 10f, bodyColor)
-        drawPixelRect(canvas, cx + g * 3.5f, top + g * 7.5f, cx + g * 5f, top + g * 10f, bodyColor)
-
-        // --- hands ---
-        fillPaint.color = accentColor
-        canvas.drawRect(cx - g * 5.5f, top + g * 9f, cx - g * 5f, top + g * 10f, fillPaint)
-        canvas.drawRect(cx + g * 5f, top + g * 9f, cx + g * 5.5f, top + g * 10f, fillPaint)
-
-        // --- feet ---
-        fillPaint.color = darkColor
-        canvas.drawRect(cx - g * 2.5f, top + g * 11f, cx - g * 0.5f, top + g * 12f, fillPaint)
-        canvas.drawRect(cx + g * 0.5f, top + g * 11f, cx + g * 2.5f, top + g * 12f, fillPaint)
-    }
-
-    private fun drawNormalEyes(canvas: Canvas, cx: Float, eyeY: Float, g: Float) {
-        fillPaint.color = eyeColor
-        if (isBlinking) {
-            canvas.drawRect(cx - g * 1.8f, eyeY + g * 0.6f, cx - g * 0.3f, eyeY + g * 1f, fillPaint)
-            canvas.drawRect(cx + g * 0.3f, eyeY + g * 0.6f, cx + g * 1.8f, eyeY + g * 1f, fillPaint)
-        } else {
-            canvas.drawRect(cx - g * 1.8f, eyeY, cx - g * 0.3f, eyeY + g * 1.5f, fillPaint)
-            canvas.drawRect(cx + g * 0.3f, eyeY, cx + g * 1.8f, eyeY + g * 1.5f, fillPaint)
-            fillPaint.color = Color.WHITE
-            canvas.drawRect(cx - g * 1.2f, eyeY + g * 0.1f, cx - g * 0.6f, eyeY + g * 0.5f, fillPaint)
-            canvas.drawRect(cx + g * 0.9f, eyeY + g * 0.1f, cx + g * 1.5f, eyeY + g * 0.5f, fillPaint)
-        }
-    }
-
-    private fun drawHappyEyes(canvas: Canvas, cx: Float, eyeY: Float, g: Float) {
-        if (isBlinking) {
-            fillPaint.color = eyeColor
-            canvas.drawRect(cx - g * 1.8f, eyeY + g * 0.5f, cx - g * 0.3f, eyeY + g * 0.9f, fillPaint)
-            canvas.drawRect(cx + g * 0.3f, eyeY + g * 0.5f, cx + g * 1.8f, eyeY + g * 0.9f, fillPaint)
-        } else {
-            // cheerful arched eyes ^ ^
-            fillPaint.color = eyeColor
-            canvas.drawRect(cx - g * 1.8f, eyeY + g * 0.5f, cx - g * 0.3f, eyeY + g * 1.5f, fillPaint)
-            canvas.drawRect(cx + g * 0.3f, eyeY + g * 0.5f, cx + g * 1.8f, eyeY + g * 1.5f, fillPaint)
-            // sparkle
-            fillPaint.color = Color.WHITE
-            canvas.drawRect(cx - g * 1.2f, eyeY + g * 0.6f, cx - g * 0.6f, eyeY + g * 1f, fillPaint)
-            canvas.drawRect(cx + g * 0.9f, eyeY + g * 0.6f, cx + g * 1.5f, eyeY + g * 1f, fillPaint)
-        }
-    }
-
-    private fun drawSleepyEyes(canvas: Canvas, cx: Float, eyeY: Float, g: Float) {
-        fillPaint.color = eyeColor
-        // droopy half-closed eyes
-        canvas.drawRect(cx - g * 1.8f, eyeY + g * 0.4f, cx - g * 0.3f, eyeY + g * 1f, fillPaint)
-        canvas.drawRect(cx + g * 0.3f, eyeY + g * 0.4f, cx + g * 1.8f, eyeY + g * 1f, fillPaint)
-        // eyelids covering top half
-        fillPaint.color = Color.rgb(220, 235, 245)
-        canvas.drawRect(cx - g * 1.9f, eyeY + g * 0.3f, cx - g * 0.2f, eyeY + g * 0.6f, fillPaint)
-        canvas.drawRect(cx + g * 0.2f, eyeY + g * 0.3f, cx + g * 1.9f, eyeY + g * 0.6f, fillPaint)
-    }
-
-    private fun drawPixelRect(canvas: Canvas, left: Float, top: Float, right: Float, bottom: Float, color: Int) {
-        fillPaint.color = color
-        canvas.drawRect(left, top, right, bottom, fillPaint)
-        strokePaint.color = darkColor
-        canvas.drawRect(left, top, right, bottom, strokePaint)
-    }
-
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        handler.removeCallbacksAndMessages(null)
+        // --- 底座脚 ---
+        fillPaint.color = tvBodyColor
+        val fw = 9f
+        val fh = 7f
+        canvas.drawRoundRect(RectF(cx - 20f, bodyBottom, cx - 20f + fw, bodyBottom + fh), 2.5f, 2.5f, fillPaint)
+        canvas.drawRoundRect(RectF(cx + 11f, bodyBottom, cx + 11f + fw, bodyBottom + fh), 2.5f, 2.5f, fillPaint)
     }
 }
