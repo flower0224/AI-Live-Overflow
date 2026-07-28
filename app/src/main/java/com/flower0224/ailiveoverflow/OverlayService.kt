@@ -16,6 +16,7 @@ class OverlayService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var petView: PetView
     private lateinit var supabaseSync: SupabaseSync
+    private lateinit var layoutParams: WindowManager.LayoutParams
 
     override fun onCreate() {
         super.onCreate()
@@ -34,14 +35,14 @@ class OverlayService : Service() {
     private fun createOverlayView() {
         petView = PetView(this)
 
-        val params = WindowManager.LayoutParams(
-            220,
-            240,
+        layoutParams = WindowManager.LayoutParams(
+            150,
+            200,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -49,7 +50,13 @@ class OverlayService : Service() {
             y = 120
         }
 
-        windowManager.addView(petView, params)
+        windowManager.addView(petView, layoutParams)
+
+        petView.onDragListener = { dx, dy ->
+            layoutParams.x += dx.toInt()
+            layoutParams.y += dy.toInt()
+            windowManager.updateViewLayout(petView, layoutParams)
+        }
     }
 
     private fun createNotificationChannel() {
