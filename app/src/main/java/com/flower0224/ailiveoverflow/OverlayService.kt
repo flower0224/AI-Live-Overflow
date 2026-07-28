@@ -62,14 +62,12 @@ class OverlayService : Service() {
         petView.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    if (event.y < 30f) {
-                        layoutParams.flags =
-                            layoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-                        windowManager.updateViewLayout(petView, layoutParams)
-                        petView.lastTouchX = event.rawX
-                        petView.lastTouchY = event.rawY
-                        true
-                    } else false
+                    layoutParams.flags =
+                        layoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                    windowManager.updateViewLayout(petView, layoutParams)
+                    petView.lastTouchX = event.rawX
+                    petView.lastTouchY = event.rawY
+                    true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - petView.lastTouchX
