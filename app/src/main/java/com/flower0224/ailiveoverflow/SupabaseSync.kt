@@ -1,7 +1,6 @@
 package com.flower0224.ailiveoverflow
 
 import kotlinx.coroutines.*
-import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -81,7 +80,7 @@ class SupabaseSync {
         }
     }
 
-    private fun updateMood(mood: String) {
+    private suspend fun updateMood(mood: String) {
         try {
             val conn = URL("$url/rest/v1/pet_state?id=eq.1")
                 .openConnection() as HttpURLConnection
