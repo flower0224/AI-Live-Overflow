@@ -11,6 +11,8 @@ class SupabaseSync {
     private val url = "https://hpijefltncgrczzwxtez.supabase.co"
     private val anonKey = "sb_publishable_wncOZIf8gANJZJQagikb3w_XriyMc52"
 
+    var onStateChanged: ((mood: String) -> Unit)? = null
+
     fun startPolling() {
         scope.launch {
             while (isActive) {
@@ -36,9 +38,10 @@ class SupabaseSync {
                     val json = JSONObject(
                         response.trim().removePrefix("[").removeSuffix("]")
                     )
-                    val stateKey = json.optString("state_key")
-                    val stateValue = json.optString("state_value")
-                    // TODO: dispatch to pet animation controller
+                    val mood = json.optString("state_value", "idle")
+                    withContext(Dispatchers.Main) {
+                        onStateChanged?.invoke(mood)
+                    }
                 }
             } catch (_: Exception) {
             }
