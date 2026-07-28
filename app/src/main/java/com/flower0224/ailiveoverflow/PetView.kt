@@ -24,11 +24,9 @@ class PetView(context: Context) : View(context) {
             postInvalidate()
         }
 
-    // 供 OverlayService 拖动使用
     var lastTouchX = 0f
     var lastTouchY = 0f
 
-    // TV colors
     private val tvBodyColor = Color.rgb(24, 24, 24)
     private val tvFrameColor = Color.rgb(55, 55, 60)
     private val screenBgColor = Color.rgb(0, 47, 167)
@@ -110,10 +108,14 @@ class PetView(context: Context) : View(context) {
         val ty = screenTop + sh / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
         canvas.drawText(emoji, cx, ty, textPaint)
 
-        // --- 底部指示灯 ---
+        // --- 左下角横长方形指示灯 ---
         val indicatorColor = indicatorColors[mood] ?: indicatorColors["idle"]!!
         fillPaint.color = indicatorColor
-        canvas.drawCircle(cx, bodyBottom + 2f, 3.5f, fillPaint)
+        val iw = 9f
+        val ih = 3.5f
+        val ix = screenLeft + 4f
+        val iy = screenBottom - ih - 4f
+        canvas.drawRoundRect(RectF(ix, iy, ix + iw, iy + ih), 1.5f, 1.5f, fillPaint)
 
         // --- 底座脚 ---
         fillPaint.color = tvBodyColor
